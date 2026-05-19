@@ -37,13 +37,16 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS — el frontend y el companion necesitan llamar a estos endpoints
+# CORS — acepta cualquier deploy de Vercel del proyecto + localhost
+# Usamos regex porque el usuario puede tener múltiples deploys (production, preview)
+# todos válidos a la vez.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[settings.FRONTEND_URL, "http://localhost:8000", "http://localhost:3000"],
+    allow_origin_regex=r"https://([a-zA-Z0-9-]+\.)?(vercel\.app|jarvisai\.com)|http://localhost(:\d+)?",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Routers
