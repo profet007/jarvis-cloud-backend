@@ -19,6 +19,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import jwt, JWTError
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .settings import settings
@@ -73,7 +74,12 @@ async def current_user(
     if not creds:
         raise HTTPException(status_code=401, detail="No autenticado")
     user_id = decode_token(creds.credentials, "access")
-    res = await db.execute(select(User).where(User.id == user_id))
+    # Eager-load la subscription para evitar lazy-load fuera de sesión async
+    res = await db.execute(
+        select(User)
+        .options(selectinload(User.subscription))
+        .where(User.id == user_id)
+    )
     user = res.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=401, detail="Usuario no encontrado")
@@ -208,5 +214,6 @@ async def upsert_user_from_oauth(
         db.add(sub)
 
     await db.commit()
-    await db.refresh(user)
+    # Refrescar con la subscription cargada para evitar lazy-load posterior
+    await db.refresh(user, attribute_names=["subscription"])
     return user
