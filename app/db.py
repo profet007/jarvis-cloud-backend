@@ -10,8 +10,18 @@ class Base(DeclarativeBase):
     pass
 
 
+def _normalize_db_url(url: str) -> str:
+    """Railway/Heroku entregan 'postgresql://...' pero SQLAlchemy async necesita
+    'postgresql+asyncpg://...'. Normalizamos sin obligar a configurar a mano."""
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+    if url.startswith("postgresql://") and "+asyncpg" not in url:
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    return url
+
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    _normalize_db_url(settings.DATABASE_URL),
     echo=False,
     pool_pre_ping=True,
 )
